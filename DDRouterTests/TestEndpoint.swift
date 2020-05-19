@@ -1,11 +1,3 @@
-//
-//  TestEndpoint.swift
-//  DDRouterTest
-//
-//  Created by Rigney, Will (AU - Sydney) on 16/9/19.
-//  Copyright © 2019 Will Rigney. All rights reserved.
-//
-
 import Foundation
 import DDRouter
 
