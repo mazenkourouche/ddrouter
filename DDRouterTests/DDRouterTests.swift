@@ -1,11 +1,3 @@
-//
-//  DDRouterTests.swift
-//  DDRouterTests
-//
-//  Created by Rigney, Will (AU - Sydney) on 13/9/19.
-//  Copyright © 2019 Rigney, Will (AU - Sydney). All rights reserved.
-//
-
 import XCTest
 @testable import DDRouter
 

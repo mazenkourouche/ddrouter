@@ -32,17 +32,22 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
     var urlSession: URLSession?
 
     required public init(ephemeralSession: Bool = false) {
-        if ephemeralSession {
-            // Clone the current session config, then mutate as needed. We won't capture changes made _after_ init(). Ok normally.
-            if let masterConfiguration = DDRouter.sharedSession?.configuration {
-                let tempConfiguration = URLSessionConfiguration.ephemeral
-                // Allow monkey patching from the main configuration such as Stubbing etc
-                tempConfiguration.protocolClasses = masterConfiguration.protocolClasses
-                urlSession = URLSession(configuration: tempConfiguration)
-            }
-        } else {
-            urlSession = DDRouter.sharedSession
+        urlSession = ephemeralSession
+            ? createEphemeralSession()
+            : DDRouter.sharedSession
+    }
+
+    func createEphemeralSession() -> URLSession {
+        // clone the current session config, then mutate as needed
+        // what's the go with this not handling errors
+        let ephemeralConfig = URLSessionConfiguration.ephemeral
+
+        if let sharedConfig = DDRouter.sharedSession?.configuration {
+            // copy separately protocol classes from current session config
+            ephemeralConfig.protocolClasses = sharedConfig.protocolClasses
         }
+
+        return URLSession(configuration: ephemeralConfig)
     }
 
     // todo: do this in the future
@@ -71,7 +76,6 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
             }
 
             // log the request
-            // todo: log properly
             if DDRouter.printToConsole {
                 NetworkLogger.log(request: request)
             }
@@ -115,13 +119,13 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
                 // response switch
                 switch response.statusCode {
 
-                // 204 success but no content at all
+                // 204 success with empty response
                 case 204:
-                // Don't even bother reading content server has indicated it's empty
+                    // return empty struct as response type
                     if let result = Empty() as? T {
-                        // Canonical type for empty as defined by us
                         single(.success(result))
-                    }  else {
+                    }
+                    else {
                         // We can't deserialise the type because there's no init() in protocol
                         single(.error(NetworkError.encodingFailed))
                     }
