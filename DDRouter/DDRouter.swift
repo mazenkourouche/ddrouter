@@ -15,13 +15,23 @@ public class DDRouter {
     }
 }
 
-public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol> {
+public protocol RouterProtocol {
+    associatedtype Endpoint: EndpointType
+    associatedtype E: APIErrorModelProtocol
+    func request<T: Decodable>(_ route: Endpoint) -> Single<T>
+    init(ephemeralSession: Bool)
+}
+
+public struct EmptyStruct: Decodable {}
+
+extension RouterProtocol {
+    public typealias Empty = EmptyStruct
+}
+
+public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterProtocol {
     var urlSession: URLSession?
 
-    // private deserializable empty response type
-    private struct Empty: Decodable {}
-
-    public init(ephemeralSession: Bool = false) {
+    required public init(ephemeralSession: Bool = false) {
         if ephemeralSession {
             // Clone the current session config, then mutate as needed. We won't capture changes made _after_ init(). Ok normally.
             if let masterConfiguration = DDRouter.sharedSession?.configuration {
@@ -38,10 +48,9 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol> {
     // todo: do this in the future
     // https://medium.com/@danielt1263/retrying-a-network-request-despite-having-an-invalid-token-b8b89340d29
 
-    // remove the isRelogin param
     // this returns a single that will always subscribe on a background thread
     // and observe on the main thread
-    public func request<T: Decodable>(_ route: Endpoint, isRelogin: Bool = false) -> Single<T> {
+    public func request<T: Decodable>(_ route: Endpoint) -> Single<T> {
 
         return Single.create { [weak self] single in
             guard let self = self else {
@@ -106,21 +115,25 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol> {
                 // response switch
                 switch response.statusCode {
 
-                // 2xx success.
-                case 200...299:
-                    // todo: this should be more clear
-                    if responseData.isEmpty {
-                        let empty = Empty() as! T
-                        single(.success(empty))
+                // 204 success but no content at all
+                case 204:
+                // Don't even bother reading content server has indicated it's empty
+                    if let result = Empty() as? T {
+                        // Canonical type for empty as defined by us
+                        single(.success(result))
+                    }  else {
+                        // We can't deserialise the type because there's no init() in protocol
+                        single(.error(NetworkError.encodingFailed))
                     }
-                    else {
-                        do {
-                            let decodedResponse = try JSONDecoder().decode(T.self, from: responseData)
-                            single(.success(decodedResponse))
-                        }
-                        catch (let error) {
-                            single(.error(APIError<E>.serializeError(error)))
-                        }
+
+                // 2xx success.
+                case 200...203, 205...299:
+                    do {
+                        let decodedResponse = try JSONDecoder().decode(T.self, from: responseData)
+                        single(.success(decodedResponse))
+                    }
+                    catch (let error) {
+                        single(.error(APIError<E>.serializeError(error)))
                     }
 
                 // 4xx client errors
