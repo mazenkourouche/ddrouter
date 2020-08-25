@@ -8,9 +8,10 @@ public class DDRouter {
     // must call this
     public static func initialise(
         configuration: URLSessionConfiguration,
+        session: URLSession? = nil,
         printToConsole: Bool = false) {
 
-        sharedSession = URLSession(configuration: configuration)
+        sharedSession = session ?? URLSession(configuration: configuration)
         Self.printToConsole = printToConsole
     }
 }
@@ -59,7 +60,7 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
         return Single.create { [weak self] single in
             guard let self = self else {
-                single(.error(APIError<E>.unknownError))
+                single(.error(APIError<E>.unknownError(nil)))
                 return Disposables.create()
             }
 
@@ -82,7 +83,7 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
             // get the session
             guard let urlSession = self.urlSession else {
-                single(.error(APIError<E>.unknownError))
+                single(.error(APIError<E>.unknownError(nil)))
                 return Disposables.create()
             }
 
@@ -145,7 +146,7 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
                     // match the actual status code (or unknown error)
                     guard let statusCode = HTTPStatusCode(rawValue: response.statusCode) else {
-                        single(.error(APIError<E>.unknownError))
+                        single(.error(APIError<E>.unknownError(nil)))
                         return
                     }
 
@@ -184,7 +185,11 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
                     // unknown
                     default:
-                        single(.error(APIError<E>.unknownError))
+                        let error = try? JSONDecoder().decode(
+                            E.self,
+                            from: responseData)
+
+                        single(.error(APIError<E>.unknownError(error)))
                     }
 
                 // 5xx server error
@@ -196,7 +201,11 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
                 // default / unknown error
                 default:
-                    single(.error(APIError<E>.unknownError))
+                    let error = try? JSONDecoder().decode(
+                        E.self,
+                        from: responseData)
+
+                    single(.error(APIError<E>.unknownError(error)))
                 }
             }
             task?.resume()
@@ -212,10 +221,13 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
     // build URLRequest from a given endpoint route
     private func buildRequest(from route: EndpointType) throws -> URLRequest {
 
-        guard var urlComponents = URLComponents(
-            url: route.baseURL.appendingPathComponent(route.path),
-            resolvingAgainstBaseURL: true) else {
-                throw APIError<E>.internalError
+        guard
+            let urlSession = self.urlSession,
+            var urlComponents = URLComponents(
+                url: route.baseURL.appendingPathComponent(route.path),
+                resolvingAgainstBaseURL: true) else {
+
+            throw APIError<E>.internalError
         }
 
         // Build query
@@ -233,7 +245,7 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
         var request = URLRequest(
             url: url,
             cachePolicy: .reloadIgnoringLocalAndRemoteCacheData,
-            timeoutInterval: 30.0)
+            timeoutInterval: urlSession.configuration.timeoutIntervalForRequest)
 
         // method
         request.httpMethod = route.method.rawValue
