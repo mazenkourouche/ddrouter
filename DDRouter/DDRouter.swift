@@ -194,6 +194,15 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
                 // 5xx server error
                 case 500...599:
+
+                    if
+                        let statusCode = HTTPStatusCode(rawValue: response.statusCode),
+                        statusCode == .serviceUnavailable {
+
+                        single(.error(APIError<E>.serviceUnavailable))
+                        return
+                    }
+
                     let error = try? JSONDecoder().decode(
                         E.self,
                         from: responseData)
