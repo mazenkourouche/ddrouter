@@ -23,6 +23,7 @@ public enum APIError<APIErrorModel: APIErrorModelProtocol>: Error {
 
     // 5xx Server errors
     serverError(APIErrorModel?),    // 500
+    serviceUnavailable,             // 503
 
     // Network/connection errors
     networkError,                   // Low level network problems, e.g. can't connect, timeouts
