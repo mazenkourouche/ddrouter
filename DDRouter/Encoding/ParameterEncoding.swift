@@ -35,8 +35,7 @@ enum ParameterEncoding {
                 resolvingAgainstBaseURL: false) else { throw NetworkError.encodingFailed }
 
         urlComponents.queryItems = parameters.map { key, value in
-            let encodedValue = "\(value)".addingPercentEncoding(withAllowedCharacters: .urlHostAllowed)
-            return URLQueryItem(name: key, value: encodedValue)
+            return URLQueryItem(name: key, value: "\(value)")
         }
 
         guard let url = urlComponents.url else { throw NetworkError.encodingFailed }
