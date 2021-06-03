@@ -17,4 +17,5 @@ enum HTTPStatusCode: Int {
 
     // 5xx Server error
     case serverError = 500
+    case serviceUnavailable = 503
 }

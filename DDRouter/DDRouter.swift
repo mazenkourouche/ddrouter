@@ -54,11 +54,10 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
     // todo: do this in the future
     // https://medium.com/@danielt1263/retrying-a-network-request-despite-having-an-invalid-token-b8b89340d29
 
-    // this returns a single that will always subscribe on a background thread
-    // and observe on the main thread
-    public func request<T: Decodable>(_ route: Endpoint) -> Single<T> {
+    public func requestRaw(_ route: Endpoint) -> Single<Data> {
 
         return Single.create { [weak self] single in
+            // bind self or return unknown error
             guard let self = self else {
                 single(.error(APIError<E>.unknownError(nil)))
                 return Disposables.create()
@@ -77,6 +76,7 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
             }
 
             // log the request
+            // todo: this should be a noop in prod / when disabled
             if DDRouter.printToConsole {
                 NetworkLogger.log(request: request)
             }
@@ -122,24 +122,13 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
                 // 204 success with empty response
                 case 204:
-                    // return empty struct as response type
-                    if let result = Empty() as? T {
-                        single(.success(result))
-                    }
-                    else {
-                        // We can't deserialise the type because there's no init() in protocol
-                        single(.error(NetworkError.encodingFailed))
-                    }
+                    single(.success(responseData))
 
                 // 2xx success.
                 case 200...203, 205...299:
-                    do {
-                        let decodedResponse = try JSONDecoder().decode(T.self, from: responseData)
-                        single(.success(decodedResponse))
-                    }
-                    catch (let error) {
-                        single(.error(APIError<E>.serializeError(error)))
-                    }
+
+                    // just return, do the encoding elsewhere
+                    single(.success(responseData))
 
                 // 4xx client errors
                 case 400...499:
@@ -194,6 +183,15 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
                 // 5xx server error
                 case 500...599:
+
+                    if
+                        let statusCode = HTTPStatusCode(rawValue: response.statusCode),
+                        statusCode == .serviceUnavailable {
+
+                        single(.error(APIError<E>.serviceUnavailable))
+                        return
+                    }
+
                     let error = try? JSONDecoder().decode(
                         E.self,
                         from: responseData)
@@ -208,6 +206,7 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
                     single(.error(APIError<E>.unknownError(error)))
                 }
             }
+            // make the request
             task?.resume()
 
             return Disposables.create {
@@ -216,6 +215,28 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
         }
         .subscribeOn(SerialDispatchQueueScheduler(qos: .background))
         .observeOn(MainScheduler.instance)
+    }
+
+    // this returns a single that will always subscribe on a background thread
+    // and observe on the main thread
+    public func request<T: Decodable>(_ route: Endpoint) -> Single<T> {
+
+        return requestRaw(route)
+            .map { responseData in
+
+                // empty
+                if let result = Empty() as? T {
+                    return result
+                }
+                do {
+                    // decode response
+                    let decodedResponse = try JSONDecoder().decode(T.self, from: responseData)
+                    return decodedResponse
+                }
+                catch (let error) {
+                    throw APIError<E>.serializeError(error)
+                }
+            }
     }
 
     // build URLRequest from a given endpoint route
