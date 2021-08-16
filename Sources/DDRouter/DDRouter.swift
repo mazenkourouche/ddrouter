@@ -1,5 +1,5 @@
 import Foundation
-import RxSwift
+import Combine
 
 public class DDRouter {
     static var sharedSession: URLSession?
@@ -19,7 +19,7 @@ public class DDRouter {
 public protocol RouterProtocol {
     associatedtype Endpoint: EndpointType
     associatedtype E: APIErrorModelProtocol
-    func request<T: Decodable>(_ route: Endpoint) -> Single<T>
+    func request<T: Decodable>(_ route: Endpoint) -> AnyPublisher<T, Error>
     init(ephemeralSession: Bool)
 }
 
@@ -54,13 +54,12 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
     // todo: do this in the future
     // https://medium.com/@danielt1263/retrying-a-network-request-despite-having-an-invalid-token-b8b89340d29
 
-    public func requestRaw(_ route: Endpoint) -> Single<Data> {
-
-        return Single.create { [weak self] single in
+    public func requestRaw(_ route: Endpoint) -> Future<Data, Error> {
+        return Future { [weak self] (promise) in
             // bind self or return unknown error
             guard let self = self else {
-                single(.error(APIError<E>.unknownError(nil)))
-                return Disposables.create()
+                promise(.failure(APIError<E>.unknownError(nil)))
+                return
             }
 
             var task: URLSessionTask?
@@ -71,8 +70,8 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
                 request = try self.buildRequest(from: route)
             }
             catch let error {
-                single(.error(error))
-                return Disposables.create()
+                promise(.failure(error))
+                return
             }
 
             // log the request
@@ -83,8 +82,8 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
             // get the session
             guard let urlSession = self.urlSession else {
-                single(.error(APIError<E>.unknownError(nil)))
-                return Disposables.create()
+                promise(.failure(APIError<E>.unknownError(nil)))
+                return
             }
 
             // perform the request
@@ -92,7 +91,7 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
                 // return any error from the url session task - todo: wrap this error
                 if let error = error {
-                    single(.error(error))
+                    promise(.failure(error))
                     return
                 }
 
@@ -103,7 +102,7 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
                     let response = response as? HTTPURLResponse,
                     let responseData = data else {
 
-                    single(.error(APIError<E>.nullData))
+                    promise(.failure(APIError<E>.nullData))
                     return
                 }
 
@@ -122,20 +121,20 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
                 // 204 success with empty response
                 case 204:
-                    single(.success(responseData))
+                    promise(.success(responseData))
 
                 // 2xx success.
                 case 200...203, 205...299:
 
                     // just return, do the encoding elsewhere
-                    single(.success(responseData))
+                    promise(.success(responseData))
 
                 // 4xx client errors
                 case 400...499:
 
                     // match the actual status code (or unknown error)
                     guard let statusCode = HTTPStatusCode(rawValue: response.statusCode) else {
-                        single(.error(APIError<E>.unknownError(nil)))
+                        promise(.failure(APIError<E>.unknownError(nil)))
                         return
                     }
 
@@ -146,31 +145,31 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
                         let error = try? JSONDecoder().decode(
                             E.self,
                             from: responseData)
-                        single(.error(APIError<E>.badRequest(error)))
+                        promise(.failure(APIError<E>.badRequest(error)))
 
                     // unauthorized
                     case .unauthorized:
                         let error = try? JSONDecoder().decode(
                             E.self,
                             from: responseData)
-                        single(.error(APIError<E>.unauthorized(error)))
+                        promise(.failure(APIError<E>.unauthorized(error)))
                         return
                         // todo: add autoretry back, outside this function
 
                     // resource not found
                     case .notFound:
-                        single(.error(APIError<E>.notFound))
+                        promise(.failure(APIError<E>.notFound))
 
                     // too many requests
                     case .tooManyRequests:
-                        single(.error(APIError<E>.tooManyRequests))
+                        promise(.failure(APIError<E>.tooManyRequests))
 
                     // forbidden
                     case .forbidden:
                         let error = try? JSONDecoder().decode(
                             E.self,
                             from: responseData)
-                        single(.error(APIError<E>.forbidden(error)))
+                        promise(.failure(APIError<E>.forbidden(error)))
 
                     // unknown
                     default:
@@ -178,7 +177,7 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
                             E.self,
                             from: responseData)
 
-                        single(.error(APIError<E>.unknownError(error)))
+                        promise(.failure(APIError<E>.unknownError(error)))
                     }
 
                 // 5xx server error
@@ -188,14 +187,14 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
                         let statusCode = HTTPStatusCode(rawValue: response.statusCode),
                         statusCode == .serviceUnavailable {
 
-                        single(.error(APIError<E>.serviceUnavailable))
+                        promise(.failure(APIError<E>.serviceUnavailable))
                         return
                     }
 
                     let error = try? JSONDecoder().decode(
                         E.self,
                         from: responseData)
-                    single(.error(APIError<E>.serverError(error)))
+                    promise(.failure(APIError<E>.serverError(error)))
 
                 // default / unknown error
                 default:
@@ -203,40 +202,21 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
                         E.self,
                         from: responseData)
 
-                    single(.error(APIError<E>.unknownError(error)))
+                    promise(.failure(APIError<E>.unknownError(error)))
                 }
             }
             // make the request
             task?.resume()
-
-            return Disposables.create {
-                task?.cancel()
-            }
         }
-        .subscribeOn(SerialDispatchQueueScheduler(qos: .background))
-        .observeOn(MainScheduler.instance)
     }
 
     // this returns a single that will always subscribe on a background thread
     // and observe on the main thread
-    public func request<T: Decodable>(_ route: Endpoint) -> Single<T> {
-
+    public func request<T: Decodable>(_ route: Endpoint) -> AnyPublisher<T, Error> {
         return requestRaw(route)
-            .map { responseData in
-
-                // empty
-                if let result = Empty() as? T {
-                    return result
-                }
-                do {
-                    // decode response
-                    let decodedResponse = try JSONDecoder().decode(T.self, from: responseData)
-                    return decodedResponse
-                }
-                catch (let error) {
-                    throw APIError<E>.serializeError(error)
-                }
-            }
+            .decode(type: T.self, decoder: JSONDecoder())
+            .mapError({error in APIError<E>.serializeError(error)})
+            .eraseToAnyPublisher()
     }
 
     // build URLRequest from a given endpoint route

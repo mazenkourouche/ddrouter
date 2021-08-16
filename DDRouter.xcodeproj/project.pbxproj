@@ -84,8 +84,8 @@
 		C981C1E3232B189100738C6D = {
 			isa = PBXGroup;
 			children = (
-				C981C1EF232B189100738C6D /* DDRouter */,
-				C981C1FA232B189100738C6D /* DDRouterTests */,
+				E0D3E85126CA03D600BDFB5C /* Source */,
+				E0D3E85426CA03F200BDFB5C /* Tests */,
 				C981C1EE232B189100738C6D /* Products */,
 				C981C27B232F24EE00738C6D /* Frameworks */,
 			);
@@ -178,6 +178,22 @@
 				C981C27C232F24EE00738C6D /* RxSwift.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		E0D3E85126CA03D600BDFB5C /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				C981C1EF232B189100738C6D /* DDRouter */,
+			);
+			path = Source;
+			sourceTree = "<group>";
+		};
+		E0D3E85426CA03F200BDFB5C /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				C981C1FA232B189100738C6D /* DDRouterTests */,
+			);
+			path = Tests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
