@@ -233,7 +233,7 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
         // Build query
         if !route.query.isEmpty {
-            let items = route.query.map { URLQueryItem(name: $0, value: $1) }
+            let items = route.query.map { URLQueryItem(name: $0, value: $1.stringByAddingPercentEncodingForRFC3986()) }
             urlComponents.queryItems = items
         }
 
@@ -315,4 +315,13 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
         print(prettyPrintedString)
     }
+}
+
+extension String {
+  func stringByAddingPercentEncodingForRFC3986() -> String? {
+    let unreserved = "-._~?"
+    let allowed = NSMutableCharacterSet.alphanumeric()
+    allowed.addCharacters(in: unreserved)
+    return addingPercentEncoding(withAllowedCharacters: allowed as CharacterSet)
+  }
 }
