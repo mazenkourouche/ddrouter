@@ -2,13 +2,18 @@ import Foundation
 
 public typealias Parameters = [String: Any]
 
+public enum EncodingType {
+    case json
+    case urlEncoding
+}
+
 enum ParameterEncoding {
 
     static func encode(
         urlRequest: inout URLRequest,
         bodyParameters: Encodable?,
         urlParameters: Parameters?,
-        encodingType: EncodingType = .json) throws {
+        encodingType: EncodingType) throws {
 
         if let urlParameters = urlParameters {
             guard let url = urlRequest.url else { throw NetworkError.encodingFailed }

@@ -317,7 +317,3 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
     }
 }
 
-enum EncodingType {
-    case json
-    case urlEncoding
-}

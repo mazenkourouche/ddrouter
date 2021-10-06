@@ -8,7 +8,8 @@ public enum HTTPTask {
 
     case requestEncodableParameters(
         bodyParameters: Encodable?,
-        urlParameters: Parameters?)
+        urlParameters: Parameters?,
+        encodingType: EncodingType = .json)
 
     // case download, upload...etc
 
