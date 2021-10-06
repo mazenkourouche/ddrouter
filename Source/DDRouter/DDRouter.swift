@@ -268,13 +268,15 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
         case .requestEncodableParameters(
             let bodyParameters,
-            let urlParameters):
+            let urlParameters,
+            let encodingType):
 
             do {
                 try ParameterEncoding.encode(
                     urlRequest: &request,
                     bodyParameters: bodyParameters,
-                    urlParameters: urlParameters)
+                    urlParameters: urlParameters,
+                    encodingType: encodingType)
             }
             catch let error {
                 throw APIError<E>.serializeError(error)
