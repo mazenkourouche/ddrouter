@@ -62,6 +62,11 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
                 return
             }
 
+            guard Reachability.isConnectedToNetwork() else {
+                promise(.failure(NetworkError.noConnection))
+                return
+            }
+
             var task: URLSessionTask?
 
             // try to build the request

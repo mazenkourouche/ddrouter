@@ -25,6 +25,7 @@
 		C981C27F232F256600738C6D /* ParameterEncodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C981C27E232F256600738C6D /* ParameterEncodingTests.swift */; };
 		C9A1C448245951FA0084BD30 /* LICENSE.md in Resources */ = {isa = PBXBuildFile; fileRef = C9A1C447245951FA0084BD30 /* LICENSE.md */; };
 		C9F3B80A233D919200CE086E /* TestEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F3B809233D919200CE086E /* TestEndpoint.swift */; };
+		E0E18B0A272FB0FE005D98EE /* Reachability.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E18B09272FB0FE005D98EE /* Reachability.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +60,7 @@
 		C981C27E232F256600738C6D /* ParameterEncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParameterEncodingTests.swift; sourceTree = "<group>"; };
 		C9A1C447245951FA0084BD30 /* LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.md; sourceTree = SOURCE_ROOT; };
 		C9F3B809233D919200CE086E /* TestEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestEndpoint.swift; sourceTree = "<group>"; };
+		E0E18B09272FB0FE005D98EE /* Reachability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reachability.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -168,6 +170,7 @@
 			isa = PBXGroup;
 			children = (
 				C981C26F232F247E00738C6D /* NetworkLogger.swift */,
+				E0E18B09272FB0FE005D98EE /* Reachability.swift */,
 			);
 			path = Utility;
 			sourceTree = "<group>";
@@ -309,6 +312,7 @@
 			files = (
 				C981C279232F247E00738C6D /* EndpointType.swift in Sources */,
 				C981C275232F247E00738C6D /* HTTPTask.swift in Sources */,
+				E0E18B0A272FB0FE005D98EE /* Reachability.swift in Sources */,
 				C981C270232F247E00738C6D /* APIError.swift in Sources */,
 				C981C276232F247E00738C6D /* HTTPMethod.swift in Sources */,
 				C981C274232F247E00738C6D /* AnyEncodable.swift in Sources */,
