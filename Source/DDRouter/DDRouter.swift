@@ -19,7 +19,7 @@ public class DDRouter {
 public protocol RouterProtocol {
     associatedtype Endpoint: EndpointType
     associatedtype E: APIErrorModelProtocol
-    func request<T: Decodable>(_ route: Endpoint) -> AnyPublisher<T, Error>
+    func request<T: Decodable>(_ route: Endpoint, decoder: JSONDecoder) -> AnyPublisher<T, Error>
     init(ephemeralSession: Bool)
 }
 
