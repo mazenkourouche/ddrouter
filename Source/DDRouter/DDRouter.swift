@@ -212,9 +212,9 @@ public class Router<Endpoint: EndpointType, E: APIErrorModelProtocol>: RouterPro
 
     // this returns a single that will always subscribe on a background thread
     // and observe on the main thread
-    public func request<T: Decodable>(_ route: Endpoint) -> AnyPublisher<T, Error> {
+    public func request<T: Decodable>(_ route: Endpoint, decoder: JSONDecoder = JSONDecoder()) -> AnyPublisher<T, Error> {
         return requestRaw(route)
-            .decode(type: T.self, decoder: JSONDecoder())
+            .decode(type: T.self, decoder: decoder)
             .mapError({error in APIError<E>.serializeError(error)})
             .eraseToAnyPublisher()
     }
